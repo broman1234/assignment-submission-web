@@ -1,30 +1,66 @@
 import './App.css';
+import {Route, Routes} from "react-router-dom";
+import Dashboard from "./Dashboard";
+import Homepage from "./Homepage";
+import Login from "./Login";
+import PrivateRoute from "./PrivateRoute";
+import AssignmentView from "./AssignmentView";
+import 'bootstrap/dist/css/bootstrap.min.css';
+import {useEffect, useState} from "react";
+import jwt_decode from "jwt-decode";
+import CodeReviewerDashboard from "./CodeReviewerDashboard";
+import CodeReviewAssignmentView from "./CodeReviewAssignmentView";
+import {useUser} from "./UserProvider";
+
 
 function App() {
-    console.log("Hello!");
+    const [roles, setRoles] = useState([]);
+    const user = useUser();
 
-    const reqBody = {
-        "username": "manmo",
-        "password": "abc"
+    useEffect(() => {
+        console.log("JWT has changed");
+        setRoles(getRolesFromJWT());
+    }, [user.jwt]);
+
+    function getRolesFromJWT() {
+        if (user.jwt) {
+            const decodedJwt = jwt_decode(user.jwt);
+            return decodedJwt.authorities;
+        } else {
+            return [];
+        }
     }
 
-    fetch("api/auth/login", {
-        headers: {
-            "Content-Type": "application/json",
-        },
-        method: "post",
-        body: JSON.stringify(reqBody)
-    }).then(response => Promise.all([response.json(), response.headers]))
-        .then(([body, headers]) => {
-            const authValue = headers.get("authorization");
-            console.log(authValue);
-            console.log(body);
-        });
-
     return (
-        <div className="App">
-            <h1>Hello World!</h1>
-        </div>
+            <Routes>
+                <Route path="/dashboard" element={
+                    roles.find((role) => role === "ROLE_CODE_REVIEWER") ? (
+                        <PrivateRoute>
+                            <CodeReviewerDashboard/>
+                        </PrivateRoute>
+                    ) : (
+                        <PrivateRoute>
+                            <Dashboard/>
+                        </PrivateRoute>
+                    )
+                }/>
+                <Route
+                    path="/assignments/:id"
+                    element={
+                        roles.find((role) => role === "ROLE_CODE_REVIEWER") ? (
+                            <PrivateRoute>
+                                <CodeReviewAssignmentView/>
+                            </PrivateRoute>
+                        ) : (
+                            <PrivateRoute>
+                                <AssignmentView/>
+                            </PrivateRoute>
+                        )
+                    }
+                />
+                <Route path="/" element={<Homepage/>}/>
+                <Route path="/login" element={<Login/>}/>
+            </Routes>
     );
 }
 
